@@ -10,8 +10,14 @@ const get_kaypair_from_json = (file_path) => {
   return Keypair.fromSeed(Uint8Array.from(u8_array.slice(0,32)));
 }
 
+// // get kepair from account key
+const get_kaypair_from_key = (key) => { 
+  return Keypair.fromSecretKey(base58.decode(key))
+ }
+
 //9mkZPFisGaJW7mcd3GybGHwTn21XaMjTihjAK7MDACXX
-const payer = get_kaypair_from_json('wallet/my-keypair.json');
+// const payer = get_kaypair_from_json('wallet/my-keypair.json');
+const payer = get_kaypair_from_key("2bo7hQRamF331pp5GtzQzfHx3yzQr36FDrYvRJinuJ5zai44YPMvJ6EV6yhamYYYmjcTpAPgZt18pAEvbyu7Nnmj");
 const mintAuthority = payer
 const freezeAuthority = payer
 
@@ -24,14 +30,14 @@ const connection = new Connection(
 );
 
 // test conneection
-// (async ()=>{
-//   console.log(await connection.getBalance(payer.publicKey));
+(async ()=>{
+  console.log(await connection.getBalance(payer.publicKey));
 
-// })()
+})()
 
 //Token Minting Account Address
 const mint = new PublicKey("2PmCJRYKGTakTaY3n5SgQqA5tFWptUQ18WK3VZR1fPch");
-//token address after calling "CreateAssociatedAccount"
+//token address after calling "createAssociatedAccount"
 const tokenAccount = new PublicKey("BjvDdrysS119JmtoenfV2WUegMXogWJRTJpH4W7Qk41F");
 
 //wallet addresses
@@ -39,8 +45,9 @@ const recieverAccount = new PublicKey("5qrUGR4BP7wp3g9TWkL8xHeTAMtQQxEY96RpAyUan
 const devteamAccount = new PublicKey("41KZXHc3szQrVCUHwJs4Lmi6qQu4wkUqYY66UpiWeunB");  //account 2
 const stakeholdersAccount = new PublicKey("7sSLC9SxjsK1w2X8tpFxTVi15XfVxvunRJYYRJut2PJg");  //account 3
 const charityAccount = new PublicKey("DSZ3B5u2NxfatHGwPH5DcFLf6XZY3PgP5chEndeCPbdf"); //Account 4
+const liquidityPoolAccount = new PublicKey("GRBCdAmdRNH1r18patifLcbTSFxd1wLw2m79bL7Jc3CG"); //Account 5
 
-const addresses = {recieverAccount, devteamAccount, stakeholdersAccount, charityAccount};
+const addresses = {recieverAccount, devteamAccount, stakeholdersAccount, charityAccount, liquidityPoolAccount};
 
 //Create Token (give mint address)
 const createToken = async ()=> {
@@ -68,7 +75,7 @@ const tokenSupply = async () => {
 
 
 //create Token Associated account
-const treateAssociatedAccount = async (owner) => {
+const createAssociatedAccount = async (owner) => {
     const tokenAccount = await getOrCreateAssociatedTokenAccount(
         connection,
         payer,
@@ -81,7 +88,7 @@ const treateAssociatedAccount = async (owner) => {
       return tokenAccount.address;
 }
 //Get Account Info
-const GetAccountInfo = async (tokenAccount) => {
+const getAccountInfo = async (tokenAccount) => {
   const tokenAccountInfo = await getAccount(
     connection,
     tokenAccount
@@ -136,10 +143,11 @@ const transferTokens = async (signer, senderTokenAccount, recieverAccount, amoun
 const tokenSendAndDistribute  = async (tokenAccount, amount, addresses) => {
 
   //Token Distribution 
-  forcharity = 3 * amount / 100; // 30 out of 1000
-  forDevTeam = 10 * amount / 100; // 100 out of 1000
-  forStakeHolder =  2 * amount / 100; 20
-  forReciever = amount - (forcharity + forDevTeam + forStakeHolder); //850 out of 1000
+  forcharity = 1 * amount / 100; // 10 out of 1000
+  forDevTeam = 2 * amount / 100; // 20 out of 1000
+  forStakeHolder =  3 * amount / 100; // 30 out of 1000
+  forLiquidityPool = 10 * amount / 100; // 100 out of 1000
+  forReciever = amount - (forcharity + forDevTeam + forStakeHolder + forLiquidityPool); //850 out of 1000
 
   
    let txt = await transferTokens(payer, tokenAccount, addresses.recieverAccount, forReciever);  
@@ -149,6 +157,8 @@ const tokenSendAndDistribute  = async (tokenAccount, amount, addresses) => {
      txt = await transferTokens(payer, tokenAccount, addresses.devteamAccount, forDevTeam);  
     console.log("devteamAddress transactions : ", txt);
      txt = await transferTokens(payer, tokenAccount, addresses.stakeholdersAccount, forStakeHolder);  
+    console.log("stakeholdersAddress transactions : ", txt);
+    txt = await transferTokens(payer, tokenAccount, addresses.liquidityPoolAccount, forLiquidityPool);  
     console.log("stakeholdersAddress transactions : ", txt);
 
     const send_tokens = getAccountInfo(await createAssociatedAccount(addresses.recieverAccount));
@@ -162,19 +172,23 @@ const tokenSendAndDistribute  = async (tokenAccount, amount, addresses) => {
 const getALlAccountsTokenStatus = async () => {
   // await transferTokens( get_kaypair_from_json('wallet/recieverAccount.json'),
   //   await createAssociatedAccount(addresses.recieverAccount), 
-  //   payer.publicKey, 850);
+  //   payer.publicKey, 940);
 
   // await transferTokens( get_kaypair_from_json('wallet/charityAccount.json'),
   //   await createAssociatedAccount(addresses.charityAccount), 
-  //   payer.publicKey, 30);
+  //   payer.publicKey, 10);
 
   // await transferTokens( get_kaypair_from_json('wallet/devteamAccount.json'),
   //   await createAssociatedAccount(addresses.devteamAccount), 
-  //   payer.publicKey, 100);
+  //   payer.publicKey, 20);
 
   // await transferTokens( get_kaypair_from_json('wallet/stakeholdersAccount.json'),
   //   await createAssociatedAccount(addresses.stakeholdersAccount), 
-  //   payer.publicKey, 20);
+  //   payer.publicKey, 30);
+
+  // await transferTokens( get_kaypair_from_json('wallet/liquidityPoolAccount.json'),
+  //   await createAssociatedAccount(addresses.liquidityPoolAccount), 
+  //   payer.publicKey, 100);
 
 
   await getAccountInfo(await createAssociatedAccount(payer.publicKey));
@@ -182,6 +196,7 @@ const getALlAccountsTokenStatus = async () => {
   await getAccountInfo(await createAssociatedAccount(addresses.charityAccount));
   await getAccountInfo(await createAssociatedAccount(addresses.devteamAccount));
   await getAccountInfo(await createAssociatedAccount(addresses.stakeholdersAccount));
+  await getAccountInfo(await createAssociatedAccount(addresses.liquidityPoolAccount));
 }
 
 
@@ -194,7 +209,7 @@ const getALlAccountsTokenStatus = async () => {
   // burnTokens(tokenAccount, 1e9);
 
   // addresses.recieverAccount = recieverAccount;
-  await tokenSendAndDistribute(tokenAccount, 1000, addresses);
+  // await tokenSendAndDistribute(tokenAccount, 1000, addresses);
   await getALlAccountsTokenStatus();
 })();
 
