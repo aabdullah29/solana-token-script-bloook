@@ -3,9 +3,9 @@
 
 install node packegs using ```yarn install```.
 all accounts are available in ```wallet``` folder.
-run code using `node index-1.2.js`
+run code using `node index.js`
 
-in ```index-1.2``` we add token distribution function.
+in ```index.js``` we add token distribution function.
 
 1. create token using ```createToken``` that will give the mint address
 2. get token detail using  ```tokenSupply``` this will give the total supplay of that mint address
