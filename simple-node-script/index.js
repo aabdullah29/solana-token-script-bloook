@@ -56,6 +56,7 @@ const mintTokens = async (connection, payer, mint, tokenAccount, amount) => {
 const getAccountInfo = async (connection, tokenAccount) => {
   const tokenAccountInfo = await getAccount(connection, tokenAccount);
   console.log(tokenAccountInfo.amount);
+  return tokenAccountInfo.amount
 };
 
 
@@ -79,6 +80,7 @@ const createAssociatedAccount = async (connection, payer, mint, owner) => {
 const transferTokens = async (connection, payer, mint, senderTokenAccount, recieverAccount, amount) => {
   const toTokenAccount = await getOrCreateAssociatedTokenAccount(connection, payer, mint, recieverAccount);
   console.log("Associated Token Account: ", toTokenAccount.address.toBase58());
+  console.log("====> Amount: ", amount)
   signature = await transfer(connection, payer, senderTokenAccount, toTokenAccount.address, payer.publicKey, amount);
   return signature;
 };

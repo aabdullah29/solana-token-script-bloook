@@ -38,17 +38,15 @@ const mintTokens = async (connection, payer, mint, tokenAccount, amount) => {
 const GetAccountInfo = async (connection, tokenAccount) => {
   const tokenAccountInfo = await getAccount(connection, tokenAccount);
   console.log(tokenAccountInfo.amount);
-  return tokenAccountInfo.amount
 };
 
 
 //create token associated account (against the mint address and owner will be the payer address)
-const CreateAssociatedAccount = async (connection, payer, mint, owner) => {
-  const tokenAccount = await getOrCreateAssociatedTokenAccount(connection, payer, mint, owner);
-  // console.log("Mint Address:", tokenAccount.mint.toBase58());
-  // console.log("Owner Address: ", tokenAccount.owner.toBase58());
-  // console.log("Token Account:", tokenAccount.address.toBase58());
-  return tokenAccount.address;
+const CreateAssociatedAccount = async (connection, payer, mint) => {
+  const tokenAccount = await getOrCreateAssociatedTokenAccount(connection, payer, mint, payer.publicKey);
+  console.log("Mint Address:", tokenAccount.mint.toBase58());
+  console.log("Owner Address: ", tokenAccount.owner.toBase58());
+  console.log("Token Account:", tokenAccount.address.toBase58());
 };
 
 
@@ -183,51 +181,30 @@ const addresses = { recieverAccount, devteamAddress, stakeholders, charity, liqu
 
 /* ************************* start external APIs ************************* */
 
-// exports.mintTheTokens = async (req, res) => {
-//   try {
-//     const _result = await mintTo(connection, payer, mint, tokenAccount, payer.publicKey, req.body.amount);
-//     // await mintTokens(
-//     //   connection,
-//     //   payer,
-//     //   tokenAccount,
-//     //   mint,
-//     //   req.body.amount * (LAMPORTS_PER_SOL / 10)
-//     // );
-//     return res.json({
-//       success: true,
-//       message: "Minting successfull.",
-//       result: `https://solscan.io/tx/${_result}?cluster=testnet`,
-//     });
-//   } catch (error) {
-//     return res.json({
-//       error: error.message,
-//     });
-//   }
-// };
+exports.mintTheTokens = async (req, res) => {
+  try {
+    const _result = await mintTo(connection, payer, mint, tokenAccount, payer.publicKey, req.body.amount);
+    // await mintTokens(
+    //   connection,
+    //   payer,
+    //   tokenAccount,
+    //   mint,
+    //   req.body.amount * (LAMPORTS_PER_SOL / 10)
+    // );
+    return res.json({
+      success: true,
+      message: "Minting successfull.",
+      result: `https://solscan.io/tx/${_result}?cluster=testnet`,
+    });
+  } catch (error) {
+    return res.json({
+      error: error.message,
+    });
+  }
+};
 
 
 
-
-
-// // burn some specific ammount of token from the payer associated account
-// exports.burnTheTokens = async (req, res) => {
-//   try {
-//     const _result = await BurnTokens(connection, payer, tokenAccount, mint, req.body.amount);
-//     return res.json({
-//       success: true,
-//       message: "Burn successfull.",
-//       result: `https://solscan.io/tx/${_result}?cluster=testnet`,
-//     });
-//   } catch (error) {
-//     return res.json({
-//       error: error.message,
-//     });
-//   }
-// };
-
-
-
-// find the total supply of that mint address
 exports.supplyOfToken = async (req, res) => {
   try {
     const _result = await TokenSupply();
@@ -244,21 +221,19 @@ exports.supplyOfToken = async (req, res) => {
 };
 
 
-
-
-// find the token balance for given address
-// first find the associated token account
-// then find the balance of thet associated token account hold
-exports.balanceOfToken = async (req, res) => {
+// simple transfer without any distribution
+exports.justTransferTheTokens = async (req, res) => {
   try {
-    const owner = new PublicKey(req.body.owner)
-    const associatedAccount = await CreateAssociatedAccount(connection, payer, mint, owner);
-    const _result = (await GetAccountInfo(connection, associatedAccount)).toString();
-    console.log("Balance is => ",_result);
+    const receiverAccount = req.body.receiverAccount;
+    const amount = req.body.amount;
+    const _result = await transferTokens(connection, payer, mint, tokenAccount, recieverAccount, amount);
+
+    console.log(`transfer tokens : `, _result);
+
     return res.json({
       success: true,
-      message: `Token balance is: ${_result}`,
-      result: _result,
+      message: "Transfer successfull.",
+      result: `https://solscan.io/tx/${_result}?cluster=testnet`,
     });
   } catch (error) {
     return res.json({
@@ -266,31 +241,6 @@ exports.balanceOfToken = async (req, res) => {
     });
   }
 };
-
-
-
-
-// // simple transfer without any distribution
-// exports.justTransferTheTokens = async (req, res) => {
-//   try {
-//     const receiverAccount = req.body.receiverAccount;
-//     const amount = req.body.amount;
-//     const _result = await transferTokens(connection, payer, mint, tokenAccount, recieverAccount, amount);
-
-//     console.log(`transfer tokens : `, _result);
-
-//     return res.json({
-//       success: true,
-//       message: "Transfer successfull.",
-//       result: `https://solscan.io/tx/${_result}?cluster=testnet`,
-//     });
-//   } catch (error) {
-//     return res.json({
-//       error: error.message,
-//     });
-//   }
-// };
-
 
 
 
@@ -305,6 +255,25 @@ exports.transferAndDistributeTheTokens = async (req, res) => {
       success: true,
       message: "Minted and transferred successfully.",
       result: _result,
+    });
+  } catch (error) {
+    return res.json({
+      error: error.message,
+    });
+  }
+};
+
+
+
+
+// burn some specific ammount of token from the payer associated account
+exports.burnTheTokens = async (req, res) => {
+  try {
+    const _result = await BurnTokens(connection, payer, tokenAccount, mint, req.body.amount);
+    return res.json({
+      success: true,
+      message: "Burn successfull.",
+      result: `https://solscan.io/tx/${_result}?cluster=testnet`,
     });
   } catch (error) {
     return res.json({
@@ -367,9 +336,6 @@ exports.verifyAddress = async (req, res) => {
 };
 /* ----------------------------------- end external APIs ----------------------------------- */
 /* _____________________________________________________________________________________________ */
-
-
-
 
 
 
