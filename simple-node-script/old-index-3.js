@@ -1,5 +1,5 @@
-const { createMint, getMint, getOrCreateAssociatedTokenAccount, getAccount, mintTo, transfer, transferChecked, burn, getAssociatedTokenAddress} = require("@solana/spl-token");
-const { clusterApiUrl, Connection, Keypair, LAMPORTS_PER_SOL, PublicKey, TransactionSignature} = require("@solana/web3.js");
+const { createMint, getMint, getOrCreateAssociatedTokenAccount, getAccount, mintTo, transfer, burn } = require("@solana/spl-token");
+const { clusterApiUrl, Connection, Keypair, LAMPORTS_PER_SOL, PublicKey, TransactionSignature } = require("@solana/web3.js");
 const base58 = require("bs58");
 const fs = require("fs");
 
@@ -60,12 +60,14 @@ const getAccountInfo = async (connection, tokenAccount) => {
 };
 
 
-//get Token Associated account
-//get token associated account (against the mint address and owner will be the payer address)
-const getAssociatedAccount = async (mint, owner) => {
-  const tokenAccountAddress = await getAssociatedTokenAddress(mint, owner);
-  console.log("Token Account Address:", tokenAccountAddress.toBase58());
-  return tokenAccountAddress;
+//create Token Associated account
+//create token associated account (against the mint address and owner will be the payer address)
+const createAssociatedAccount = async (connection, payer, mint, owner) => {
+  const tokenAccount = await getOrCreateAssociatedTokenAccount(connection, payer, mint, owner);
+  console.log("Mint Address:", tokenAccount.mint.toBase58());
+  console.log("Owner Address: ", tokenAccount.owner.toBase58());
+  console.log("Token Account:", tokenAccount.address.toBase58());
+  return tokenAccount.address;
 };
 
 
@@ -78,25 +80,9 @@ const getAssociatedAccount = async (mint, owner) => {
 const transferTokens = async (connection, payer, mint, senderTokenAccount, recieverAccount, amount) => {
   const toTokenAccount = await getOrCreateAssociatedTokenAccount(connection, payer, mint, recieverAccount);
   console.log("Associated Token Account: ", toTokenAccount.address.toBase58());
-  const decimals = 0;
-  // signature = await transfer(connection, payer, senderTokenAccount, toTokenAccount.address, payer.publicKey, amount);
-  signature = await transferChecked(connection, payer, senderTokenAccount, mint, toTokenAccount.address, payer.publicKey, amount, 0);
-
-
-
-  // let tx = new Transaction();
-  // tx.add(
-  //   createTransferCheckedInstruction(
-  //     senderTokenAccount, // from
-  //     mint, // mint
-  //     toTokenAccount.address, // to
-  //     payer.publicKey, // from's owner
-  //     amount, // amount
-  //     0 // decimals
-  //   )
-  // );
-  // console.log(`txhash: ${await connection.sendTransaction(tx, [payer])}`);
-  // // return signature;
+  console.log("====> Amount: ", amount)
+  signature = await transfer(connection, payer, senderTokenAccount, toTokenAccount.address, payer.publicKey, amount);
+  return signature;
 };
 
 //mint and distribute to different people
@@ -121,47 +107,9 @@ const tokenSendAndDistribute = async (connection, payer, mint, tokenAccount, amo
   txt = await transferTokens(connection, payer, mint, tokenAccount, addresses.liquidityPoolAccount, forLiquidityPool);
   console.log("\n5: stakeholdersAddress transactions : ", txt);
 
-  const send_tokens = getAccountInfo(connection, await getAssociatedAccount(connection, payer, mint, addresses.recieverAccount));
+  const send_tokens = getAccountInfo(connection, await createAssociatedAccount(connection, payer, mint, addresses.recieverAccount));
   console.log("send token to reciever : ", send_tokens);
 };
-
-
-
-
-
-// vrify solana addresses is valid or not
-const verifySolanaAccount = async (connection, address) => {
-  let message = "";
-  try {
-    address = new PublicKey(address);
-    if (!PublicKey.isOnCurve(address)) {
-      message = "Invalid Address 001..!";
-      console.log(message);
-      return {_result: true, _message: message};
-    }
-  } catch (err) {
-    message= "Invalid Address 002..!";
-    console.log(message);
-    return {_result: false, _message: message};
-  }
-
-  try {
-    if ((await connection.getAccountInfo(address)) === null) {
-      message = "Address does not exist..!";
-      console.log(message);
-      return {_result: false, _message: message};
-    }
-    console.log(await connection.getAccountInfo(address));
-    message = "Address is Valid.";
-    console.log(message);
-    return {_result: true, _message: message};
-  } catch (error) {
-    message = "Invalid Address 003..!";
-    console.log(message, "\nError: ", error);
-    return {_result: false, _message: message};
-  }
-};
-
 
 
 
@@ -191,12 +139,12 @@ const connection = new Connection(clusterApiUrl("devnet"), "confirmed");
 
 // test conneection
 (async () => {
-  console.log("Test Connection --> account: ", payer.publicKey.toBase58(), "\nbalance: ", await connection.getBalance(payer.publicKey));
+  console.log("Test Connection --> account balance: ", await connection.getBalance(payer.publicKey));
 })();
 
 //Token Minting Account Address
 const mint = new PublicKey("2PmCJRYKGTakTaY3n5SgQqA5tFWptUQ18WK3VZR1fPch");
-//token address after calling "getOrCreateAssociatedTokenAccount"
+//token address after calling "createAssociatedAccount"
 const tokenAccount = new PublicKey("BjvDdrysS119JmtoenfV2WUegMXogWJRTJpH4W7Qk41F");
 
 //wallet addresses
@@ -224,43 +172,42 @@ const addresses = { recieverAccount, devteamAccount, stakeholdersAccount, charit
 // send token back
 const getALlAccountsTokenStatus = async () => {
   // await transferTokens(connection, get_kaypair_from_json('wallet/recieverAccount.json'), mint,
-  //   await getAssociatedAccount(mint, addresses.recieverAccount),
-  //   payer.publicKey, 800);
+  //   await createAssociatedAccount(connection, payer, mint, addresses.recieverAccount),
+  //   payer.publicKey, 840);
 
   // await transferTokens(connection, get_kaypair_from_json('wallet/charityAccount.json'), mint,
-  //   await getAssociatedAccount(mint, addresses.charityAccount),
+  //   await createAssociatedAccount(connection, payer, mint, addresses.charityAccount),
   //   payer.publicKey, 10);
 
   // await transferTokens(connection, get_kaypair_from_json('wallet/devteamAccount.json'), mint,
-  //   await getAssociatedAccount(mint, addresses.devteamAccount),
+  //   await createAssociatedAccount(connection, payer, mint, addresses.devteamAccount),
   //   payer.publicKey, 20);
 
   // await transferTokens(connection, get_kaypair_from_json('wallet/stakeholdersAccount.json'), mint,
-  //   await getAssociatedAccount(mint, addresses.stakeholdersAccount),
+  //   await createAssociatedAccount(connection, payer, mint, addresses.stakeholdersAccount),
   //   payer.publicKey, 30);
 
   // await transferTokens(connection, get_kaypair_from_json('wallet/liquidityPoolAccount.json'), mint,
-  //   await getAssociatedAccount(mint, addresses.liquidityPoolAccount),
+  //   await createAssociatedAccount(connection, payer, mint, addresses.liquidityPoolAccount),
   //   payer.publicKey, 100);
 
-  await getAccountInfo(connection, await getAssociatedAccount(mint, payer.publicKey));
-  await getAccountInfo(connection, await getAssociatedAccount(mint, addresses.recieverAccount));
-  await getAccountInfo(connection, await getAssociatedAccount(mint, addresses.charityAccount));
-  await getAccountInfo(connection, await getAssociatedAccount(mint, addresses.devteamAccount));
-  await getAccountInfo(connection, await getAssociatedAccount(mint, addresses.stakeholdersAccount));
-  await getAccountInfo(connection, await getAssociatedAccount(mint, addresses.liquidityPoolAccount));
+  await getAccountInfo(connection, await createAssociatedAccount(connection, payer, mint, payer.publicKey));
+  await getAccountInfo(connection, await createAssociatedAccount(connection, payer, mint, addresses.recieverAccount));
+  await getAccountInfo(connection, await createAssociatedAccount(connection, payer, mint, addresses.charityAccount));
+  await getAccountInfo(connection, await createAssociatedAccount(connection, payer, mint, addresses.devteamAccount));
+  await getAccountInfo(connection, await createAssociatedAccount(connection, payer, mint, addresses.stakeholdersAccount));
+  await getAccountInfo(connection, await createAssociatedAccount(connection, payer, mint, addresses.liquidityPoolAccount));
 };
 
 (async () => {
   // createToken();
   // tokenSupply();
-  // getAssociatedAccount(mint, mint);
-  // getAccountInfo(connection, new PublicKey("DfWmqB5r8EjEf8iMvgFsQM9Foepx5ffGdvGBNS1FaDkk"));
-  // verifySolanaAccount(connection, "DfWmqB5r8EjEf8iMvgFsQM9Foepx5ffGdvGBNS1FaDkk");
+  // createAssociatedAccount(connection, payer, mint, payer.publicKey);
+  // getAccountInfo(connection, tokenAccount);
   // mintTokens(connection, payer, mint, tokenAccount, 10e9);
   // burnTokens(connection, payer, tokenAccount, mint, 1e9);
 
   // addresses.recieverAccount = recieverAccount;
-  await tokenSendAndDistribute(connection, payer, mint, tokenAccount, 1000, addresses);
-  // await getALlAccountsTokenStatus();
+  // await tokenSendAndDistribute(connection, payer, mint, tokenAccount, 1000, addresses);
+  await getALlAccountsTokenStatus();
 })();

@@ -1,4 +1,4 @@
-const { createMint, getMint, getOrCreateAssociatedTokenAccount, getAccount, mintTo, transfer, burn } = require("@solana/spl-token");
+const { createMint, getMint, getOrCreateAssociatedTokenAccount, getAccount, mintTo, transfer, burn, getAssociatedTokenAddress} = require("@solana/spl-token");
 const { clusterApiUrl, Connection, Keypair, LAMPORTS_PER_SOL, PublicKey } = require("@solana/web3.js");
 const base58 = require("bs58");
 
@@ -48,6 +48,13 @@ const CreateAssociatedAccount = async (connection, payer, mint, owner) => {
   // console.log("Owner Address: ", tokenAccount.owner.toBase58());
   // console.log("Token Account:", tokenAccount.address.toBase58());
   return tokenAccount.address;
+};
+//get Token Associated account
+//get token associated account (against the mint address and owner will be the payer address)
+const getAssociatedAccount = async (mint, owner) => {
+  const tokenAccountAddress = await getAssociatedTokenAddress(mint, owner);
+  console.log("Token Account Address:", tokenAccountAddress.toBase58());
+  return tokenAccountAddress;
 };
 
 
@@ -100,6 +107,42 @@ const tokenSendAndDistribute = async (connection, payer, mint, tokenAccount, amo
 
   return data;
 };
+
+
+
+// vrify solana addresses is valid or not
+const verifySolanaAccount = async (connection, address) => {
+  let message = "";
+  try {
+    address = new PublicKey(address);
+    if (!PublicKey.isOnCurve(address)) {
+      message = "Invalid Address 001..!";
+      console.log(message);
+      return {_result: true, _message: message};
+    }
+  } catch (err) {
+    message= "Invalid Address 002..!";
+    console.log(message);
+    return {_result: false, _message: message};
+  }
+
+  try {
+    if ((await connection.getAccountInfo(address)) === null) {
+      message = "Address does not exist..!";
+      console.log(message);
+      return {_result: false, _message: message};
+    }
+    console.log(await connection.getAccountInfo(address));
+    message = "Address is Valid.";
+    console.log(message);
+    return {_result: true, _message: message};
+  } catch (error) {
+    message = "Invalid Address 003..!";
+    console.log(message, "\nError: ", error);
+    return {_result: false, _message: message};
+  }
+};
+
 
 
 // burn the given amount of tokens
@@ -199,6 +242,7 @@ const addresses = { recieverAccount, devteamAddress, stakeholders, charity, liqu
 //     });
 //   } catch (error) {
 //     return res.json({
+//       success: false,
 //       error: error.message,
 //     });
 //   }
@@ -219,6 +263,7 @@ const addresses = { recieverAccount, devteamAddress, stakeholders, charity, liqu
 //     });
 //   } catch (error) {
 //     return res.json({
+//       success: false,
 //       error: error.message,
 //     });
 //   }
@@ -237,6 +282,7 @@ exports.supplyOfToken = async (req, res) => {
     });
   } catch (error) {
     return res.json({
+      success: false,
       error: error.message,
     });
   }
@@ -250,9 +296,20 @@ exports.supplyOfToken = async (req, res) => {
 // then find the balance of thet associated token account hold
 exports.balanceOfToken = async (req, res) => {
   try {
-    const owner = new PublicKey(req.body.owner)
-    const associatedAccount = await CreateAssociatedAccount(connection, payer, mint, owner);
-    const _result = (await GetAccountInfo(connection, associatedAccount)).toString();
+    const address = new PublicKey(req.body.address)
+    const associatedAccount = await getAssociatedAccount(mint, address);
+    let {_result, _message} = await verifySolanaAccount(connection, associatedAccount.toBase58());
+    console.log("_result: ", _result, "_message: ", _message);
+    if (_result === false || _result === undefined) {
+      _result = false;
+      _message = "Account not found.";
+      return res.json({
+        success: _result,
+        message: `${_message}`,
+        result: _result,
+      });
+    }
+    _result = (await GetAccountInfo(connection, associatedAccount)).toString();
     return res.json({
       success: true,
       message: `Token balance is: ${_result}`,
@@ -260,6 +317,7 @@ exports.balanceOfToken = async (req, res) => {
     });
   } catch (error) {
     return res.json({
+      success: false,      
       error: error.message,
     });
   }
@@ -284,6 +342,7 @@ exports.balanceOfToken = async (req, res) => {
 //     });
 //   } catch (error) {
 //     return res.json({
+//       success: false,  
 //       error: error.message,
 //     });
 //   }
@@ -301,11 +360,12 @@ exports.transferAndDistributeTheTokens = async (req, res) => {
     const _result = await tokenSendAndDistribute(connection, payer, mint, tokenAccount, req.body.amount /* * (LAMPORTS_PER_SOL / 10)*/, addresses);
     return res.json({
       success: true,
-      message: "Minted and transferred successfully.",
+      message: "Transferred successfully.",
       result: _result,
     });
   } catch (error) {
     return res.json({
+      success: false,
       error: error.message,
     });
   }
@@ -318,44 +378,14 @@ exports.transferAndDistributeTheTokens = async (req, res) => {
 // vrify solana addresses is valid or not
 exports.verifyAddress = async (req, res) => {
   try {
-    address = new PublicKey(req.body.address);
-    if (!PublicKey.isOnCurve(address)) {
-      console.log("Invalid Address 001..!");
-      return res.json({
-        success: false,
-        message: `Invalid Address 001..!`,
-        result: false,
-      });
-    }
-  } catch (err) {
-    console.log("Invalid Address 002..!");
+    const {_result, _message} = await verifySolanaAccount(connection, req.body.address)
     return res.json({
-      success: false,
-      message: err.message,
-      result: false,
-    });
-  }
-
-  try {
-    const network = clusterApiUrl("devnet");
-    const opts = { preflightCommitment: "processed" };
-    const conn = new Connection(network, opts.preflightCommitment);
-    if ((await conn.getAccountInfo(address)) === null) {
-      console.log("Address does not exist..!");
-      return res.json({
-        success: false,
-        message: `Address does not exist..!`,
-        result: false,
-      });
-    }
-    console.log(await conn.getAccountInfo(address));
-    return res.json({
-      success: true,
-      message: `Valid Address..!`,
-      result: true,
+      success: _result,
+      message: _message,
+      result: _result,
     });
   } catch (error) {
-    console.log("Invalid Address 003..!");
+    console.log("verifyAddress error.");
     return res.json({
       success: false,
       message: err.message,
