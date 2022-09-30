@@ -37,7 +37,6 @@ const mintTokens = async (connection, payer, mint, tokenAccount, amount) => {
 //get token amout of that mint address
 const GetAccountInfo = async (connection, tokenAccount) => {
   const tokenAccountInfo = await getAccount(connection, tokenAccount);
-  console.log(tokenAccountInfo.amount);
   return tokenAccountInfo.amount
 };
 
@@ -254,7 +253,6 @@ exports.balanceOfToken = async (req, res) => {
     const owner = new PublicKey(req.body.owner)
     const associatedAccount = await CreateAssociatedAccount(connection, payer, mint, owner);
     const _result = (await GetAccountInfo(connection, associatedAccount)).toString();
-    console.log("Balance is => ",_result);
     return res.json({
       success: true,
       message: `Token balance is: ${_result}`,
