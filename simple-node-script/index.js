@@ -102,11 +102,11 @@ const tokenSendAndDistribute = async (connection, payer, mint, tokenAccount, amo
   amount = (1000000000) * amount;
 
   //Token Distribution
-  const forCharity = (1 * amount) / 100; // 10 out of 1000
-  const forDevTeam = (2 * amount) / 100; // 20 out of 1000
-  const forStakeHolder = (3 * amount) / 100; // 30 out of 1000
-  const forLiquidityPool = (10 * amount) / 100; // 100 out of 1000
-  const forReciever = amount - (forCharity + forDevTeam + forStakeHolder + forLiquidityPool); //850 out of 1000
+  const forCharity = Math.floor((1 * amount) / 100); // 10 out of 1000
+  const forDevTeam = Math.floor((2 * amount) / 100); // 20 out of 1000
+  const forStakeHolder = Math.floor((3 * amount) / 100); // 30 out of 1000
+  const forLiquidityPool = Math.floor((10 * amount) / 100); // 100 out of 1000
+  const forReciever = Math.floor(amount - (forCharity + forDevTeam + forStakeHolder + forLiquidityPool)); //850 out of 1000
 
   if(isFloat(forCharity) || isFloat(forDevTeam) || isFloat(forStakeHolder) || isFloat(forLiquidityPool) || isFloat(forReciever)){
     throw new Error('Amount is not Distributeable.')
@@ -114,7 +114,7 @@ const tokenSendAndDistribute = async (connection, payer, mint, tokenAccount, amo
 
   let txt = await transferTokens(connection, payer, mint, tokenAccount, addresses.recieverAccount, forReciever);
   console.log("\n1: recieverAccount transactions : ", txt);
-  txt = await transferTokens(connection, payer, mint, tokenAccount, addresses.charityAccount, forcharity);
+  txt = await transferTokens(connection, payer, mint, tokenAccount, addresses.charityAccount, forCharity);
   console.log("\n2: charityAddress transactions : ", txt);
   txt = await transferTokens(connection, payer, mint, tokenAccount, addresses.devteamAccount, forDevTeam);
   console.log("\n3: devteamAddress transactions : ", txt);

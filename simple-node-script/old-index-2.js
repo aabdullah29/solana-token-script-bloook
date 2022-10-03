@@ -143,16 +143,16 @@ const transferTokens = async (signer, senderTokenAccount, recieverAccount, amoun
 const tokenSendAndDistribute  = async (tokenAccount, amount, addresses) => {
 
   //Token Distribution 
-  forcharity = 1 * amount / 100; // 10 out of 1000
+  forCharity = 1 * amount / 100; // 10 out of 1000
   forDevTeam = 2 * amount / 100; // 20 out of 1000
   forStakeHolder =  3 * amount / 100; // 30 out of 1000
   forLiquidityPool = 10 * amount / 100; // 100 out of 1000
-  forReciever = amount - (forcharity + forDevTeam + forStakeHolder + forLiquidityPool); //850 out of 1000
+  forReciever = amount - (forCharity + forDevTeam + forStakeHolder + forLiquidityPool); //850 out of 1000
 
   
    let txt = await transferTokens(payer, tokenAccount, addresses.recieverAccount, forReciever);  
     console.log("recieverAccount transactions : ", txt);
-     txt = await transferTokens(payer, tokenAccount, addresses.charityAccount, forcharity);  
+     txt = await transferTokens(payer, tokenAccount, addresses.charityAccount, forCharity);  
     console.log("charityAddress transactions : ", txt);
      txt = await transferTokens(payer, tokenAccount, addresses.devteamAccount, forDevTeam);  
     console.log("devteamAddress transactions : ", txt);

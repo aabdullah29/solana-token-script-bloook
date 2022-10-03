@@ -90,15 +90,15 @@ const transferTokens = async (connection, payer, mint, senderTokenAccount, recie
 // first calculate the percentage for each then transfer to each
 const tokenSendAndDistribute = async (connection, payer, mint, tokenAccount, amount, addresses) => {
   //Token Distribution
-  const forcharity = (1 * amount) / 100; // 10 out of 1000
+  const forCharity = (1 * amount) / 100; // 10 out of 1000
   const forDevTeam = (2 * amount) / 100; // 20 out of 1000
   const forStakeHolder = (3 * amount) / 100; // 30 out of 1000
   const forLiquidityPool = (10 * amount) / 100; // 100 out of 1000
-  const forReciever = amount - (forcharity + forDevTeam + forStakeHolder + forLiquidityPool); //850 out of 1000
+  const forReciever = amount - (forCharity + forDevTeam + forStakeHolder + forLiquidityPool); //850 out of 1000
 
   let txt = await transferTokens(connection, payer, mint, tokenAccount, addresses.recieverAccount, forReciever);
   console.log("\n1: recieverAccount transactions : ", txt);
-  txt = await transferTokens(connection, payer, mint, tokenAccount, addresses.charityAccount, forcharity);
+  txt = await transferTokens(connection, payer, mint, tokenAccount, addresses.charityAccount, forCharity);
   console.log("\n2: charityAddress transactions : ", txt);
   txt = await transferTokens(connection, payer, mint, tokenAccount, addresses.devteamAccount, forDevTeam);
   console.log("\n3: devteamAddress transactions : ", txt);
