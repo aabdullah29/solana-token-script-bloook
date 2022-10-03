@@ -1,12 +1,13 @@
-const { createMint, getMint, getOrCreateAssociatedTokenAccount, getAccount, mintTo, transfer,
-  burn, getAssociatedTokenAddress} = require("@solana/spl-token");
-const { clusterApiUrl, Connection, Keypair, LAMPORTS_PER_SOL, PublicKey} = require("@solana/web3.js");
+/*
+In this file decimal functionality is not implemented
+but use getAccociatedAccount method instead of getOrCreateAssociatedTokenAccount
+*/
+
+
+const { createMint, getMint, getOrCreateAssociatedTokenAccount, getAccount, mintTo, transfer, burn, getAssociatedTokenAddress} = require("@solana/spl-token");
+const { clusterApiUrl, Connection, Keypair, LAMPORTS_PER_SOL, PublicKey } = require("@solana/web3.js");
 const base58 = require("bs58");
 
-// check float number
-function isFloat(n){
-  return Number(n) === n && n % 1 !== 0;
-}
 
 
 /* ************************* start internal methord ************************* */
@@ -42,11 +43,18 @@ const mintTokens = async (connection, payer, mint, tokenAccount, amount) => {
 //get token amout of that mint address
 const GetAccountInfo = async (connection, tokenAccount) => {
   const tokenAccountInfo = await getAccount(connection, tokenAccount);
-  const balance = await Number(tokenAccountInfo.amount) / (1000000000);
-  return balance;
+  return tokenAccountInfo.amount
 };
 
 
+//create token associated account (against the mint address and owner will be the payer address)
+const CreateAssociatedAccount = async (connection, payer, mint, owner) => {
+  const tokenAccount = await getOrCreateAssociatedTokenAccount(connection, payer, mint, owner);
+  // console.log("Mint Address:", tokenAccount.mint.toBase58());
+  // console.log("Owner Address: ", tokenAccount.owner.toBase58());
+  // console.log("Token Account:", tokenAccount.address.toBase58());
+  return tokenAccount.address;
+};
 //get Token Associated account
 //get token associated account (against the mint address and owner will be the payer address)
 const getAssociatedAccount = async (mint, owner) => {
@@ -62,7 +70,7 @@ const getAssociatedAccount = async (mint, owner) => {
 // then transfer the given token ammount
 // signer/payer can be other account which hold some tokens and want to send some other address
 const transferTokens = async (connection, payer, mint, senderTokenAccount, recieverAccount, amount) => {
-  console.log("TransferTokens to this address: ", recieverAccount.toBase58());
+  console.log("transferTokens to this address: ", recieverAccount);
   const toTokenAccount = await getOrCreateAssociatedTokenAccount(connection, payer, mint, recieverAccount);
   console.log("Associated Token Account: ", toTokenAccount.address.toBase58());
   signature = await transfer(connection, payer, senderTokenAccount, toTokenAccount.address, payer.publicKey, amount);
@@ -75,23 +83,12 @@ const transferTokens = async (connection, payer, mint, senderTokenAccount, recie
 //transfer to reciever address and distribute to different people
 // first calculate the percentage for each then transfer to each
 const tokenSendAndDistribute = async (connection, payer, mint, tokenAccount, amount, addresses) => {
-  if (isFloat(amount)) {
-    if (amount.toString().split(".")[1].length > 9) {
-      throw new Error('Amount is not Valid.')
-    }
-  }
-  amount = (1000000000) * amount;
-
   //Token Distribution
   const forCharity = (1 * amount) / 100; // 10 out of 1000
   const forDevTeam = (2 * amount) / 100; // 20 out of 1000
   const forStakeHolder = (3 * amount) / 100; // 30 out of 1000
   const forLiquidityPool = (10 * amount) / 100; // 100 out of 1000
   const forReciever = amount - (forCharity + forDevTeam + forStakeHolder + forLiquidityPool); //850 out of 1000
-
-  if(isFloat(forCharity) || isFloat(forDevTeam) || isFloat(forStakeHolder) || isFloat(forLiquidityPool) || isFloat(forReciever)){
-    throw new Error('Amount is not Distributeable.')
-  }
 
   const data = {};
   
@@ -202,7 +199,7 @@ const BurnTokens = async (connection, payer, tokenAccount, mint, amount) => {
 
 /*test start*/
 
-const payer = Keypair.fromSecretKey(base58.decode("3BQN4tf8HJzFURwt4EB2RFJuxdtcbgP7iqnZLRq5t9t7fowta79kNzLTHrv31b5GTENrLVPrBfaDjwuwnKLUDYLM"));
+const payer = Keypair.fromSecretKey(base58.decode("2bo7hQRamF331pp5GtzQzfHx3yzQr36FDrYvRJinuJ5zai44YPMvJ6EV6yhamYYYmjcTpAPgZt18pAEvbyu7Nnmj"));
 const mintAuthority = payer;
 const freezeAuthority = payer;
 console.log("Authority publick key: ", payer.publicKey.toString());
@@ -210,8 +207,8 @@ console.log("Authority publick key: ", payer.publicKey.toString());
 const connection = new Connection(clusterApiUrl("devnet"), "confirmed");
 
 //token address
-const mint = new PublicKey("9wm4wC6Sk6PSSRTLcULyQiGojzBGWZZyGGi6bwpJEANy");
-const tokenAccount = new PublicKey("FPXcan6zrc4cGcZR9PH5xoAfDngiN3MhxsXBqMNCXLfu");
+const mint = new PublicKey("2PmCJRYKGTakTaY3n5SgQqA5tFWptUQ18WK3VZR1fPch");
+const tokenAccount = new PublicKey("BjvDdrysS119JmtoenfV2WUegMXogWJRTJpH4W7Qk41F");
 
 //wallet addresses
 const recieverAccount = new PublicKey("5qrUGR4BP7wp3g9TWkL8xHeTAMtQQxEY96RpAyUanwPt");
@@ -403,8 +400,6 @@ exports.verifyAddress = async (req, res) => {
 };
 /* ----------------------------------- end external APIs ----------------------------------- */
 /* _____________________________________________________________________________________________ */
-
-
 
 
 

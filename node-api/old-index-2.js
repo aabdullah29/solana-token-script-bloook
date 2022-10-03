@@ -246,7 +246,6 @@ exports.justTransferTheTokens = async (req, res) => {
 
 // transfer token to some address and get the fee ammount in token and distribute
 exports.transferAndDistributeTheTokens = async (req, res) => {
-  console.log("mintTheTokens", req.body);
   try {
     // const _result = await mintAndTransfer(connection, payer, mint, tokenAccount, req.body.amount * (LAMPORTS_PER_SOL / 10), addresses);
     addresses.recieverAccount = new PublicKey(req.body.reciever);

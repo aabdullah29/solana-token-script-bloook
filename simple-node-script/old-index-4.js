@@ -1,6 +1,11 @@
-const { createMint, getMint, getOrCreateAssociatedTokenAccount, getAccount, mintTo, transfer,
-   burn, getAssociatedTokenAddress} = require("@solana/spl-token");
-const { clusterApiUrl, Connection, Keypair, LAMPORTS_PER_SOL, PublicKey} = require("@solana/web3.js");
+/*
+In this file decimal functionality is not implemented
+but use getAccociatedAccount method instead of getOrCreateAssociatedTokenAccount
+*/
+
+
+const { createMint, getMint, getOrCreateAssociatedTokenAccount, getAccount, mintTo, transfer, transferChecked, burn, getAssociatedTokenAddress} = require("@solana/spl-token");
+const { clusterApiUrl, Connection, Keypair, LAMPORTS_PER_SOL, PublicKey, TransactionSignature} = require("@solana/web3.js");
 const base58 = require("bs58");
 const fs = require("fs");
 
@@ -10,15 +15,11 @@ const get_kaypair_from_json = (file_path) => {
   return Keypair.fromSeed(Uint8Array.from(u8_array.slice(0, 32)));
 };
 
-// get kepair from account key
+// // get kepair from account key
 const get_kaypair_from_key = (key) => {
   return Keypair.fromSecretKey(base58.decode(key));
 };
 
-// check float number
-function isFloat(n){
-  return Number(n) === n && n % 1 !== 0;
-}
 
 
 
@@ -60,9 +61,8 @@ const mintTokens = async (connection, payer, mint, tokenAccount, amount) => {
 //get token amout of that mint address
 const getAccountInfo = async (connection, tokenAccount) => {
   const tokenAccountInfo = await getAccount(connection, tokenAccount);
-  const balance = await Number(tokenAccountInfo.amount) / (1000000000);
-  console.log(balance);
-  return balance;
+  console.log(tokenAccountInfo.amount);
+  return tokenAccountInfo.amount
 };
 
 
@@ -85,32 +85,36 @@ const transferTokens = async (connection, payer, mint, senderTokenAccount, recie
   const toTokenAccount = await getOrCreateAssociatedTokenAccount(connection, payer, mint, recieverAccount);
   console.log("Associated Token Account: ", toTokenAccount.address.toBase58());
   const decimals = 0;
-  const signature = await transfer(connection, payer, senderTokenAccount, toTokenAccount.address, payer.publicKey, amount);
-  return signature;
+  // signature = await transfer(connection, payer, senderTokenAccount, toTokenAccount.address, payer.publicKey, amount);
+  signature = await transferChecked(connection, payer, senderTokenAccount, mint, toTokenAccount.address, payer.publicKey, amount, 0);
+
+
+
+  // let tx = new Transaction();
+  // tx.add(
+  //   createTransferCheckedInstruction(
+  //     senderTokenAccount, // from
+  //     mint, // mint
+  //     toTokenAccount.address, // to
+  //     payer.publicKey, // from's owner
+  //     amount, // amount
+  //     0 // decimals
+  //   )
+  // );
+  // console.log(`txhash: ${await connection.sendTransaction(tx, [payer])}`);
+  // // return signature;
 };
 
 //mint and distribute to different people
 //transfer to reciever address and distribute to different people
 // first calculate the percentage for each then transfer to each
 const tokenSendAndDistribute = async (connection, payer, mint, tokenAccount, amount, addresses) => {
-  
-  if (isFloat(amount)) {
-    if (amount.toString().split(".")[1].length > 9) {
-      throw new Error('Amount is not Valid.')
-    }
-  }
-  amount = (1000000000) * amount;
-
   //Token Distribution
-  const forCharity = (1 * amount) / 100; // 10 out of 1000
+  const forcharity = (1 * amount) / 100; // 10 out of 1000
   const forDevTeam = (2 * amount) / 100; // 20 out of 1000
   const forStakeHolder = (3 * amount) / 100; // 30 out of 1000
   const forLiquidityPool = (10 * amount) / 100; // 100 out of 1000
-  const forReciever = amount - (forCharity + forDevTeam + forStakeHolder + forLiquidityPool); //850 out of 1000
-
-  if(isFloat(forCharity) || isFloat(forDevTeam) || isFloat(forStakeHolder) || isFloat(forLiquidityPool) || isFloat(forReciever)){
-    throw new Error('Amount is not Distributeable.')
-  }
+  const forReciever = amount - (forcharity + forDevTeam + forStakeHolder + forLiquidityPool); //850 out of 1000
 
   let txt = await transferTokens(connection, payer, mint, tokenAccount, addresses.recieverAccount, forReciever);
   console.log("\n1: recieverAccount transactions : ", txt);
@@ -184,7 +188,7 @@ const burnTokens = async (connection, payer, tokenAccount, mint, amount) => {
 
 //9mkZPFisGaJW7mcd3GybGHwTn21XaMjTihjAK7MDACXX
 // const payer = get_kaypair_from_json('wallet/my-keypair.json');
-const payer = get_kaypair_from_key("3BQN4tf8HJzFURwt4EB2RFJuxdtcbgP7iqnZLRq5t9t7fowta79kNzLTHrv31b5GTENrLVPrBfaDjwuwnKLUDYLM");
+const payer = get_kaypair_from_key("2bo7hQRamF331pp5GtzQzfHx3yzQr36FDrYvRJinuJ5zai44YPMvJ6EV6yhamYYYmjcTpAPgZt18pAEvbyu7Nnmj");
 const mintAuthority = payer;
 const freezeAuthority = payer;
 
@@ -197,9 +201,9 @@ const connection = new Connection(clusterApiUrl("devnet"), "confirmed");
 })();
 
 //Token Minting Account Address
-const mint = new PublicKey("9wm4wC6Sk6PSSRTLcULyQiGojzBGWZZyGGi6bwpJEANy");
+const mint = new PublicKey("2PmCJRYKGTakTaY3n5SgQqA5tFWptUQ18WK3VZR1fPch");
 //token address after calling "getOrCreateAssociatedTokenAccount"
-const tokenAccount = new PublicKey("FPXcan6zrc4cGcZR9PH5xoAfDngiN3MhxsXBqMNCXLfu");
+const tokenAccount = new PublicKey("BjvDdrysS119JmtoenfV2WUegMXogWJRTJpH4W7Qk41F");
 
 //wallet addresses
 const recieverAccount = new PublicKey("5qrUGR4BP7wp3g9TWkL8xHeTAMtQQxEY96RpAyUanwPt"); //account 1
@@ -227,23 +231,23 @@ const addresses = { recieverAccount, devteamAccount, stakeholdersAccount, charit
 const getALlAccountsTokenStatus = async () => {
   // await transferTokens(connection, get_kaypair_from_json('wallet/recieverAccount.json'), mint,
   //   await getAssociatedAccount(mint, addresses.recieverAccount),
-  //   payer.publicKey, (1000000000) * 840);
+  //   payer.publicKey, 800);
 
   // await transferTokens(connection, get_kaypair_from_json('wallet/charityAccount.json'), mint,
   //   await getAssociatedAccount(mint, addresses.charityAccount),
-  //   payer.publicKey, (1000000000) * 10);
+  //   payer.publicKey, 10);
 
   // await transferTokens(connection, get_kaypair_from_json('wallet/devteamAccount.json'), mint,
   //   await getAssociatedAccount(mint, addresses.devteamAccount),
-  //   payer.publicKey, (1000000000) * 20);
+  //   payer.publicKey, 20);
 
   // await transferTokens(connection, get_kaypair_from_json('wallet/stakeholdersAccount.json'), mint,
   //   await getAssociatedAccount(mint, addresses.stakeholdersAccount),
-  //   payer.publicKey, (1000000000) * 30);
+  //   payer.publicKey, 30);
 
   // await transferTokens(connection, get_kaypair_from_json('wallet/liquidityPoolAccount.json'), mint,
   //   await getAssociatedAccount(mint, addresses.liquidityPoolAccount),
-  //   payer.publicKey, (1000000000) * 100);
+  //   payer.publicKey, 100);
 
   await getAccountInfo(connection, await getAssociatedAccount(mint, payer.publicKey));
   await getAccountInfo(connection, await getAssociatedAccount(mint, addresses.recieverAccount));
@@ -263,6 +267,6 @@ const getALlAccountsTokenStatus = async () => {
   // burnTokens(connection, payer, tokenAccount, mint, 1e9);
 
   // addresses.recieverAccount = recieverAccount;
-  // await tokenSendAndDistribute(connection, payer, mint, tokenAccount, 1000, addresses);
-  await getALlAccountsTokenStatus();
+  await tokenSendAndDistribute(connection, payer, mint, tokenAccount, 1000, addresses);
+  // await getALlAccountsTokenStatus();
 })();
