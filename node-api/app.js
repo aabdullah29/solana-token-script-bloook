@@ -6,7 +6,7 @@ require("dotenv").config();
 
 app.use(express.json());
 
-app.use("/", routes);
+app.use(routes);
 
 app.listen(port, (req, res) => {
   console.log(`server started at port 8080`);

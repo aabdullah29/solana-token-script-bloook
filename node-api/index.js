@@ -2,6 +2,7 @@ const { createMint, getMint, getOrCreateAssociatedTokenAccount, getAccount, mint
   burn, getAssociatedTokenAddress} = require("@solana/spl-token");
 const { clusterApiUrl, Connection, Keypair, LAMPORTS_PER_SOL, PublicKey} = require("@solana/web3.js");
 const base58 = require("bs58");
+require("dotenv").config();
 
 // check float number
 function isFloat(n){
@@ -9,21 +10,47 @@ function isFloat(n){
 }
 
 
+
+/* ************************* start web3 config ************************* */
+
+// user key
+const payer = Keypair.fromSecretKey(base58.decode(process.env.KEY));
+const mintAuthority = payer;
+const freezeAuthority = payer;
+console.log("Authority publick key: ", payer.publicKey.toString());
+//connection with solana
+const connection = new Connection(clusterApiUrl(process.env.NETWORK), "confirmed");
+
+//token address
+const mint = new PublicKey("9wm4wC6Sk6PSSRTLcULyQiGojzBGWZZyGGi6bwpJEANy");
+const tokenAccount = new PublicKey("FPXcan6zrc4cGcZR9PH5xoAfDngiN3MhxsXBqMNCXLfu");
+
+//wallet addresses
+const recieverAccount = new PublicKey("5qrUGR4BP7wp3g9TWkL8xHeTAMtQQxEY96RpAyUanwPt");
+const devteamAddress = new PublicKey("41KZXHc3szQrVCUHwJs4Lmi6qQu4wkUqYY66UpiWeunB");
+const gasFeeAddress = new PublicKey("7sSLC9SxjsK1w2X8tpFxTVi15XfVxvunRJYYRJut2PJg");
+const charity = new PublicKey("DSZ3B5u2NxfatHGwPH5DcFLf6XZY3PgP5chEndeCPbdf");
+const liquidityPool = new PublicKey("GRBCdAmdRNH1r18patifLcbTSFxd1wLw2m79bL7Jc3CG");
+const addresses = { recieverAccount, devteamAddress, gasFeeAddress, charity, liquidityPool };
+
+
+// distribution percentage
+const charityPercentage = 1;
+const devTeamPercentage = 2;
+const gasFeePercentage = 3;
+const liquidityPoolPercentage = 10;
+const percentage = { charityPercentage,  devTeamPercentage,   gasFeePercentage,   liquidityPoolPercentage}
+
+
+
+/* ----------------------------------- end web3 config ----------------------------------- */
+/* _____________________________________________________________________________________________ */
+
+
+
+
+
 /* ************************* start internal methord ************************* */
-
-//create new token address (mint address)
-// run only one time and this will give the mint address
-const CreateToken = async () => {
-  const mint = await createMint(
-    connection,
-    payer,
-    mintAuthority.publicKey,
-    freezeAuthority.publicKey,
-    9 // We are using 9 to match the CLI decimal default exactly
-  );
-  console.log(mint.toBase58()); // CUA9XgyvtnhDWvjNEvGxZVFL34zH3etLWzSpj3QVhLHd
-};
-
 
 //get total token supply (by mint address)
 const TokenSupply = async () => {
@@ -31,11 +58,6 @@ const TokenSupply = async () => {
   const total = mintInfo.supply;
   console.log(parseInt(total));
   return parseInt(total);
-};
-
-//mint given amount of token to the associated account
-const mintTokens = async (connection, payer, mint, tokenAccount, amount) => {
-  return await mintTo(connection, payer, mint, tokenAccount, payer.publicKey, amount);
 };
 
 
@@ -83,13 +105,13 @@ const tokenSendAndDistribute = async (connection, payer, mint, tokenAccount, amo
   amount = (1000000000) * amount;
 
   //Token Distribution
-  const forCharity = Math.floor((1 * amount) / 100); // 10 out of 1000
-  const forDevTeam = Math.floor((2 * amount) / 100); // 20 out of 1000
-  const forStakeHolder = Math.floor((3 * amount) / 100); // 30 out of 1000
-  const forLiquidityPool = Math.floor((10 * amount) / 100); // 100 out of 1000
-  const forReciever = Math.floor(amount - (forCharity + forDevTeam + forStakeHolder + forLiquidityPool)); //850 out of 1000
+  const forCharity = Math.floor((percentage.charityPercentage * amount) / 100); // 10 out of 1000
+  const forDevTeam = Math.floor((percentage.devTeamPercentage * amount) / 100); // 20 out of 1000
+  const forGasFee = Math.floor((percentage.gasFeePercentage * amount) / 100); // 30 out of 1000
+  const forLiquidityPool = Math.floor((percentage.liquidityPoolPercentage * amount) / 100); // 100 out of 1000
+  const forReciever = Math.floor(amount - (forCharity + forDevTeam + forGasFee + forLiquidityPool)); //850 out of 1000
 
-  if(isFloat(forCharity) || isFloat(forDevTeam) || isFloat(forStakeHolder) || isFloat(forLiquidityPool) || isFloat(forReciever)){
+  if(isFloat(forCharity) || isFloat(forDevTeam) || isFloat(forGasFee) || isFloat(forLiquidityPool) || isFloat(forReciever)){
     throw new Error('Amount is not Distributeable.')
   }
 
@@ -104,8 +126,8 @@ const tokenSendAndDistribute = async (connection, payer, mint, tokenAccount, amo
   txt = await transferTokens(connection, payer, mint, tokenAccount, addresses.devteamAddress, forDevTeam);
   console.log("\n3: => devteamAddress transactions : ", txt);
   data["devTeamHash"] = `https://solscan.io/tx/${txt}?cluster=testnet`;
-  txt = await transferTokens(connection, payer, mint, tokenAccount, addresses.stakeholders, forStakeHolder);
-  console.log("\n4: => stakeholdersAddress transactions : ", txt);
+  txt = await transferTokens(connection, payer, mint, tokenAccount, addresses.gasFeeAddress, forGasFee);
+  console.log("\n4: => gasFeeAddress transactions : ", txt);
   data["stakeHolderHAsh"] = `https://solscan.io/tx/${txt}?cluster=testnet`;
   txt = await transferTokens(connection, payer, mint, tokenAccount, addresses.liquidityPool, forLiquidityPool);
   console.log("\n5: => liquidityPoolAddress transactions : ", txt);
@@ -154,13 +176,6 @@ const verifySolanaAccount = async (connection, address) => {
 
 
 
-// burn the given amount of tokens
-const BurnTokens = async (connection, payer, tokenAccount, mint, amount) => {
-  const result = await burn(connection, payer, tokenAccount, mint, payer.publicKey, amount);
-  console.log("result : ", result);
-  return result;
-};
-
 /* ----------------------------------- end internal methord ----------------------------------- */
 /* _____________________________________________________________________________________________ */
 
@@ -175,109 +190,10 @@ const BurnTokens = async (connection, payer, tokenAccount, mint, amount) => {
 
 
 
-/* ************************* start web3 config ************************* */
-
-
-
-// const payer = Keypair.fromSecretKey(base58.decode("5cozvavrV7t9SyNnfbdsAVHJFHr9KUt6xgPzejMfLsXWqGY9DAH3Eh9qjVp847vfKw2MkiwYxnGzRKkw6yd8FcgJ"));
-// const mintAuthority = payer;
-// const freezeAuthority = payer;
-// console.log("Authority publick key: ", payer.publicKey.toString());
-
-// //connection with solana cluster
-// const connection = new Connection(clusterApiUrl("testnet"), "confirmed");
-
-// //token address mint and token associated account
-// const mint = new PublicKey("23PfyriUFSzgvuFNu4N6ZVZuWxcpmP6xgsQisLx5M7T2");
-// const tokenAccount = new PublicKey("7afY39hBCH3tMbea7wrPjzWeYiLQRb2JuBSD9NqKeZe2");
-
-// //wallet addresses
-// const recieverAccount = new PublicKey("C18Ge5g6oeCZHJEJ1VL6AoKhZQpVV5CE8scVELTyqZxt");
-// const devteamAddress = new PublicKey("rfiRWnfrKsZRzpE8LybsTizS1jFLxFAb5sa69G3E7mB");
-// const stakeholders = new PublicKey("HCZ2aQMXC5U1U5RF4Lj9CHcm9mx4k4cTq3Y61kfkhLUc");
-// const charity = new PublicKey("BKtR1eFEvqAcKZEy1CPnFT1AqVrpkMVcFu45et5bnhVo");
-// const liquidityPool = new PublicKey("BKtR1eFEvqAcKZEy1CPnFT1AqVrpkMVcFu45et5bnhVo");
-
-// const addresses = { recieverAccount, devteamAddress, stakeholders, charity , liquidityPool};
-
-/*test start*/
-
-const payer = Keypair.fromSecretKey(base58.decode("3BQN4tf8HJzFURwt4EB2RFJuxdtcbgP7iqnZLRq5t9t7fowta79kNzLTHrv31b5GTENrLVPrBfaDjwuwnKLUDYLM"));
-const mintAuthority = payer;
-const freezeAuthority = payer;
-console.log("Authority publick key: ", payer.publicKey.toString());
-//connection with solana
-const connection = new Connection(clusterApiUrl("devnet"), "confirmed");
-
-//token address
-const mint = new PublicKey("9wm4wC6Sk6PSSRTLcULyQiGojzBGWZZyGGi6bwpJEANy");
-const tokenAccount = new PublicKey("FPXcan6zrc4cGcZR9PH5xoAfDngiN3MhxsXBqMNCXLfu");
-
-//wallet addresses
-const recieverAccount = new PublicKey("5qrUGR4BP7wp3g9TWkL8xHeTAMtQQxEY96RpAyUanwPt");
-const devteamAddress = new PublicKey("41KZXHc3szQrVCUHwJs4Lmi6qQu4wkUqYY66UpiWeunB");
-const stakeholders = new PublicKey("7sSLC9SxjsK1w2X8tpFxTVi15XfVxvunRJYYRJut2PJg");
-const charity = new PublicKey("DSZ3B5u2NxfatHGwPH5DcFLf6XZY3PgP5chEndeCPbdf");
-const liquidityPool = new PublicKey("GRBCdAmdRNH1r18patifLcbTSFxd1wLw2m79bL7Jc3CG");
-
-const addresses = { recieverAccount, devteamAddress, stakeholders, charity, liquidityPool };
-
-/*test start*/
-
-
-/* ----------------------------------- end web3 config ----------------------------------- */
-/* _____________________________________________________________________________________________ */
-
-
 
 
 
 /* ************************* start external APIs ************************* */
-
-// exports.mintTheTokens = async (req, res) => {
-//   try {
-//     const _result = await mintTo(connection, payer, mint, tokenAccount, payer.publicKey, req.body.amount);
-//     // await mintTokens(
-//     //   connection,
-//     //   payer,
-//     //   tokenAccount,
-//     //   mint,
-//     //   req.body.amount * (LAMPORTS_PER_SOL / 10)
-//     // );
-//     return res.json({
-//       success: true,
-//       message: "Minting successfull.",
-//       result: `https://solscan.io/tx/${_result}?cluster=testnet`,
-//     });
-//   } catch (error) {
-//     return res.json({
-//       success: false,
-//       error: error.message,
-//     });
-//   }
-// };
-
-
-
-
-
-// // burn some specific ammount of token from the payer associated account
-// exports.burnTheTokens = async (req, res) => {
-//   try {
-//     const _result = await BurnTokens(connection, payer, tokenAccount, mint, req.body.amount);
-//     return res.json({
-//       success: true,
-//       message: "Burn successfull.",
-//       result: `https://solscan.io/tx/${_result}?cluster=testnet`,
-//     });
-//   } catch (error) {
-//     return res.json({
-//       success: false,
-//       error: error.message,
-//     });
-//   }
-// };
-
 
 
 // find the total supply of that mint address
@@ -331,32 +247,6 @@ exports.balanceOfToken = async (req, res) => {
     });
   }
 };
-
-
-
-
-// // simple transfer without any distribution
-// exports.justTransferTheTokens = async (req, res) => {
-//   try {
-//     const receiverAccount = req.body.receiverAccount;
-//     const amount = req.body.amount;
-//     const _result = await transferTokens(connection, payer, mint, tokenAccount, recieverAccount, amount);
-
-//     console.log(`transfer tokens : `, _result);
-
-//     return res.json({
-//       success: true,
-//       message: "Transfer successfull.",
-//       result: `https://solscan.io/tx/${_result}?cluster=testnet`,
-//     });
-//   } catch (error) {
-//     return res.json({
-//       success: false,  
-//       error: error.message,
-//     });
-//   }
-// };
-
 
 
 

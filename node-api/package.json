@@ -19,7 +19,7 @@
     "@solana/spl-token": "^0.2.0",
     "@solana/web3.js": "^1.35.1",
     "bs58": "^5.0.0",
-    "dotenv": "^16.0.0",
+    "dotenv": "^16.0.3",
     "express": "^4.17.3",
     "nodemon": "^2.0.15"
   }

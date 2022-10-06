@@ -22,6 +22,54 @@ function isFloat(n){
 
 
 
+
+
+
+/* ************************* start web3 config ************************* */
+
+//9mkZPFisGaJW7mcd3GybGHwTn21XaMjTihjAK7MDACXX
+// const payer = get_kaypair_from_json('wallet/my-keypair.json');
+const payer = get_kaypair_from_key("3BQN4tf8HJzFURwt4EB2RFJuxdtcbgP7iqnZLRq5t9t7fowta79kNzLTHrv31b5GTENrLVPrBfaDjwuwnKLUDYLM");
+const mintAuthority = payer;
+const freezeAuthority = payer;
+
+//connection with solana
+const connection = new Connection(clusterApiUrl("devnet"), "confirmed");
+
+// test conneection
+(async () => {
+  console.log("Test Connection --> account: ", payer.publicKey.toBase58(), "\nbalance: ", await connection.getBalance(payer.publicKey));
+})();
+
+//Token Minting Account Address
+const mint = new PublicKey("9wm4wC6Sk6PSSRTLcULyQiGojzBGWZZyGGi6bwpJEANy");
+//token address after calling "getOrCreateAssociatedTokenAccount"
+const tokenAccount = new PublicKey("FPXcan6zrc4cGcZR9PH5xoAfDngiN3MhxsXBqMNCXLfu");
+
+//wallet addresses
+const recieverAccount = new PublicKey("5qrUGR4BP7wp3g9TWkL8xHeTAMtQQxEY96RpAyUanwPt"); //account 1
+const devteamAccount = new PublicKey("41KZXHc3szQrVCUHwJs4Lmi6qQu4wkUqYY66UpiWeunB"); //account 2
+const gasFeeAccount = new PublicKey("7sSLC9SxjsK1w2X8tpFxTVi15XfVxvunRJYYRJut2PJg"); //account 3
+const charityAccount = new PublicKey("DSZ3B5u2NxfatHGwPH5DcFLf6XZY3PgP5chEndeCPbdf"); //Account 4
+const liquidityPoolAccount = new PublicKey("GRBCdAmdRNH1r18patifLcbTSFxd1wLw2m79bL7Jc3CG"); //Account 5
+const addresses = { recieverAccount, devteamAccount, gasFeeAccount, charityAccount, liquidityPoolAccount };
+
+// distribution percentage
+const charityPercentage = 1;
+const devTeamPercentage = 2;
+const gasFeePercentage = 3;
+const liquidityPoolPercentage = 10;
+const percentage = { charityPercentage,  devTeamPercentage,   gasFeePercentage,   liquidityPoolPercentage}
+
+
+/* ----------------------------------- end web3 config ----------------------------------- */
+/* _____________________________________________________________________________________________ */
+
+
+
+
+
+
 /* ************************* start internal methord ************************* */
 
 //create token (give mint address)
@@ -102,13 +150,13 @@ const tokenSendAndDistribute = async (connection, payer, mint, tokenAccount, amo
   amount = (1000000000) * amount;
 
   //Token Distribution
-  const forCharity = Math.floor((1 * amount) / 100); // 10 out of 1000
-  const forDevTeam = Math.floor((2 * amount) / 100); // 20 out of 1000
-  const forStakeHolder = Math.floor((3 * amount) / 100); // 30 out of 1000
-  const forLiquidityPool = Math.floor((10 * amount) / 100); // 100 out of 1000
-  const forReciever = Math.floor(amount - (forCharity + forDevTeam + forStakeHolder + forLiquidityPool)); //850 out of 1000
+  const forCharity = Math.floor((percentage.charityPercentage * amount) / 100); // 10 out of 1000
+  const forDevTeam = Math.floor((percentage.devTeamPercentage * amount) / 100); // 20 out of 1000
+  const forGasFee = Math.floor((percentage.gasFeePercentage * amount) / 100); // 30 out of 1000
+  const forLiquidityPool = Math.floor((percentage.liquidityPoolPercentage * amount) / 100); // 100 out of 1000
+  const forReciever = Math.floor(amount - (forCharity + forDevTeam + forGasFee + forLiquidityPool)); //850 out of 1000
 
-  if(isFloat(forCharity) || isFloat(forDevTeam) || isFloat(forStakeHolder) || isFloat(forLiquidityPool) || isFloat(forReciever)){
+  if(isFloat(forCharity) || isFloat(forDevTeam) || isFloat(forGasFee) || isFloat(forLiquidityPool) || isFloat(forReciever)){
     throw new Error('Amount is not Distributeable.')
   }
 
@@ -118,7 +166,7 @@ const tokenSendAndDistribute = async (connection, payer, mint, tokenAccount, amo
   console.log("\n2: charityAddress transactions : ", txt);
   txt = await transferTokens(connection, payer, mint, tokenAccount, addresses.devteamAccount, forDevTeam);
   console.log("\n3: devteamAddress transactions : ", txt);
-  txt = await transferTokens(connection, payer, mint, tokenAccount, addresses.stakeholdersAccount, forStakeHolder);
+  txt = await transferTokens(connection, payer, mint, tokenAccount, addresses.gasFeeAccount, forGasFee);
   console.log("\n4: stakeholdersAddress transactions : ", txt);
   txt = await transferTokens(connection, payer, mint, tokenAccount, addresses.liquidityPoolAccount, forLiquidityPool);
   console.log("\n5: stakeholdersAddress transactions : ", txt);
@@ -180,41 +228,6 @@ const burnTokens = async (connection, payer, tokenAccount, mint, amount) => {
 
 
 
-/* ************************* start web3 config ************************* */
-
-//9mkZPFisGaJW7mcd3GybGHwTn21XaMjTihjAK7MDACXX
-// const payer = get_kaypair_from_json('wallet/my-keypair.json');
-const payer = get_kaypair_from_key("3BQN4tf8HJzFURwt4EB2RFJuxdtcbgP7iqnZLRq5t9t7fowta79kNzLTHrv31b5GTENrLVPrBfaDjwuwnKLUDYLM");
-const mintAuthority = payer;
-const freezeAuthority = payer;
-
-//connection with solana
-const connection = new Connection(clusterApiUrl("devnet"), "confirmed");
-
-// test conneection
-(async () => {
-  console.log("Test Connection --> account: ", payer.publicKey.toBase58(), "\nbalance: ", await connection.getBalance(payer.publicKey));
-})();
-
-//Token Minting Account Address
-const mint = new PublicKey("9wm4wC6Sk6PSSRTLcULyQiGojzBGWZZyGGi6bwpJEANy");
-//token address after calling "getOrCreateAssociatedTokenAccount"
-const tokenAccount = new PublicKey("FPXcan6zrc4cGcZR9PH5xoAfDngiN3MhxsXBqMNCXLfu");
-
-//wallet addresses
-const recieverAccount = new PublicKey("5qrUGR4BP7wp3g9TWkL8xHeTAMtQQxEY96RpAyUanwPt"); //account 1
-const devteamAccount = new PublicKey("41KZXHc3szQrVCUHwJs4Lmi6qQu4wkUqYY66UpiWeunB"); //account 2
-const stakeholdersAccount = new PublicKey("7sSLC9SxjsK1w2X8tpFxTVi15XfVxvunRJYYRJut2PJg"); //account 3
-const charityAccount = new PublicKey("DSZ3B5u2NxfatHGwPH5DcFLf6XZY3PgP5chEndeCPbdf"); //Account 4
-const liquidityPoolAccount = new PublicKey("GRBCdAmdRNH1r18patifLcbTSFxd1wLw2m79bL7Jc3CG"); //Account 5
-
-const addresses = { recieverAccount, devteamAccount, stakeholdersAccount, charityAccount, liquidityPoolAccount };
-
-/* ----------------------------------- end web3 config ----------------------------------- */
-/* _____________________________________________________________________________________________ */
-
-
-
 
 
 
@@ -237,8 +250,8 @@ const getALlAccountsTokenStatus = async () => {
   //   await getAssociatedAccount(mint, addresses.devteamAccount),
   //   payer.publicKey, (1000000000) * 20);
 
-  // await transferTokens(connection, get_kaypair_from_json('wallet/stakeholdersAccount.json'), mint,
-  //   await getAssociatedAccount(mint, addresses.stakeholdersAccount),
+  // await transferTokens(connection, get_kaypair_from_json('wallet/gasFeeAccount.json'), mint,
+  //   await getAssociatedAccount(mint, addresses.gasFeeAccount),
   //   payer.publicKey, (1000000000) * 30);
 
   // await transferTokens(connection, get_kaypair_from_json('wallet/liquidityPoolAccount.json'), mint,
@@ -249,7 +262,7 @@ const getALlAccountsTokenStatus = async () => {
   await getAccountInfo(connection, await getAssociatedAccount(mint, addresses.recieverAccount));
   await getAccountInfo(connection, await getAssociatedAccount(mint, addresses.charityAccount));
   await getAccountInfo(connection, await getAssociatedAccount(mint, addresses.devteamAccount));
-  await getAccountInfo(connection, await getAssociatedAccount(mint, addresses.stakeholdersAccount));
+  await getAccountInfo(connection, await getAssociatedAccount(mint, addresses.gasFeeAccount));
   await getAccountInfo(connection, await getAssociatedAccount(mint, addresses.liquidityPoolAccount));
 };
 
