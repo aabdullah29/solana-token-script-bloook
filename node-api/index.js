@@ -24,9 +24,10 @@ const connection = new Connection(clusterApiUrl(process.env.NETWORK), "confirmed
 //token address
 const mint = new PublicKey("9wm4wC6Sk6PSSRTLcULyQiGojzBGWZZyGGi6bwpJEANy");
 const tokenAccount = new PublicKey("FPXcan6zrc4cGcZR9PH5xoAfDngiN3MhxsXBqMNCXLfu");
+const tokenDecimal = 1000000000;
 
 //wallet addresses
-const recieverAccount = new PublicKey("5qrUGR4BP7wp3g9TWkL8xHeTAMtQQxEY96RpAyUanwPt");
+const recieverAccount = "";
 const devteamAddress = new PublicKey("41KZXHc3szQrVCUHwJs4Lmi6qQu4wkUqYY66UpiWeunB");
 const gasFeeAddress = new PublicKey("7sSLC9SxjsK1w2X8tpFxTVi15XfVxvunRJYYRJut2PJg");
 const charity = new PublicKey("DSZ3B5u2NxfatHGwPH5DcFLf6XZY3PgP5chEndeCPbdf");
@@ -64,7 +65,7 @@ const TokenSupply = async () => {
 //get token amout of that mint address
 const GetAccountInfo = async (connection, tokenAccount) => {
   const tokenAccountInfo = await getAccount(connection, tokenAccount);
-  const balance = await Number(tokenAccountInfo.amount) / (1000000000);
+  const balance = await Number(tokenAccountInfo.amount) / (tokenDecimal);
   return balance;
 };
 
@@ -102,7 +103,7 @@ const tokenSendAndDistribute = async (connection, payer, mint, tokenAccount, amo
       throw new Error('Amount is not Valid.')
     }
   }
-  amount = (1000000000) * amount;
+  amount = (tokenDecimal) * amount;
 
   //Token Distribution
   const forCharity = Math.floor((percentage.charityPercentage * amount) / 100); // 10 out of 1000
@@ -120,22 +121,24 @@ const tokenSendAndDistribute = async (connection, payer, mint, tokenAccount, amo
   let txt = await transferTokens(connection, payer, mint, tokenAccount, addresses.recieverAccount, forReciever);
   console.log("\n1: => recieverAccount transactions : ", txt);
   data["receiverHash"] = `https://solscan.io/tx/${txt}?cluster=testnet`;
-  txt = await transferTokens(connection, payer, mint, tokenAccount, addresses.charity, forCharity);
-  console.log("\n2: => charityAddress transactions : ", txt);
-  data["charityHash"] = `https://solscan.io/tx/${txt}?cluster=testnet`;
-  txt = await transferTokens(connection, payer, mint, tokenAccount, addresses.devteamAddress, forDevTeam);
-  console.log("\n3: => devteamAddress transactions : ", txt);
-  data["devTeamHash"] = `https://solscan.io/tx/${txt}?cluster=testnet`;
-  txt = await transferTokens(connection, payer, mint, tokenAccount, addresses.gasFeeAddress, forGasFee);
-  console.log("\n4: => gasFeeAddress transactions : ", txt);
-  data["stakeHolderHAsh"] = `https://solscan.io/tx/${txt}?cluster=testnet`;
-  txt = await transferTokens(connection, payer, mint, tokenAccount, addresses.liquidityPool, forLiquidityPool);
-  console.log("\n5: => liquidityPoolAddress transactions : ", txt);
-  data["liquidityPoolHAsh"] = `https://solscan.io/tx/${txt}?cluster=testnet`;
-
+  try{
+    txt = await transferTokens(connection, payer, mint, tokenAccount, addresses.charity, forCharity);
+    console.log("\n2: => charityAddress transactions : ", txt);
+    data["charityHash"] = `https://solscan.io/tx/${txt}?cluster=testnet`;
+    txt = await transferTokens(connection, payer, mint, tokenAccount, addresses.devteamAddress, forDevTeam);
+    console.log("\n3: => devteamAddress transactions : ", txt);
+    data["devTeamHash"] = `https://solscan.io/tx/${txt}?cluster=testnet`;
+    txt = await transferTokens(connection, payer, mint, tokenAccount, addresses.gasFeeAddress, forGasFee);
+    console.log("\n4: => gasFeeAddress transactions : ", txt);
+    data["stakeHolderHAsh"] = `https://solscan.io/tx/${txt}?cluster=testnet`;
+    txt = await transferTokens(connection, payer, mint, tokenAccount, addresses.liquidityPool, forLiquidityPool);
+    console.log("\n5: => liquidityPoolAddress transactions : ", txt);
+    data["liquidityPoolHAsh"] = `https://solscan.io/tx/${txt}?cluster=testnet`;
+  } catch(e){
+    console.log("\nError In Remaining: \n", e);
+  }
   const send_tokens = await getOrCreateAssociatedTokenAccount(connection, payer, mint, addresses.recieverAccount);
   console.log("\nsend token to reciever : ", send_tokens.address);
-
   return data;
 };
 
