@@ -4,6 +4,8 @@
 
 `node-api` have the same script but it's run as api and all methods can run as api.
 
+`spl-token-transfer-using-react` have the code for connecting to phantom wallet and send and assign transaction for transfer spl tokens.
+
 #### Note:
 For token Distribution we multiply the amount 1000000000 because token have 9 decimal places. <br>
 And transfer method get int64 as amount and 1000000000 amount is equal to 1 token. <br>
